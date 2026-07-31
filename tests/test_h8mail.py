@@ -64,6 +64,11 @@ class TestH8mail(unittest.TestCase):
         self.temp_dir = make_temp_directory()
         print("Created Temp Dir: " + self.temp_dir)
         print(os.listdir(self.temp_dir))
+
+        print("Registering dir + content for auto cleanup: " + self.temp_dir)
+        self.addCleanup(self.temp_directory.cleanup)
+
+    
         self.filetargets = os.path.join(self.temp_dir, "test-emails.txt")
         self.filetxt = os.path.join(self.temp_dir, "test-creds.txt")
         self.filegz = os.path.join(self.temp_dir, "test-creds.tar.gz")
@@ -72,10 +77,6 @@ class TestH8mail(unittest.TestCase):
         # a = open(self.filetxt, "r")
         # print(a.readlines())
 
-    def tearDown(self):
-        """Cleaning temp files"""
-        print("Removing dir + content: " + self.temp_dir)
-        self.addCleanup(self.temp_directory.cleanup)
 
     def test_000_simple(self):
         """Simple test"""
