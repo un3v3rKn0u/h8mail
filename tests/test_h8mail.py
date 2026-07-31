@@ -59,7 +59,7 @@ class TestH8mail(unittest.TestCase):
         self.filetxt = os.path.join(self.temp_path, "test-creds.txt")
         self.filegz = os.path.join(self.temp_path, "test-creds.tar.gz")
 
-        print("Test files generated in : " + self.temp_dir)
+        print(f"Test files generated in : {self.temp_path}")
 
         with open(self.filetargets, "w", encoding="utf-8") as f:
             f.write(emails)
