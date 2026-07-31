@@ -26,6 +26,21 @@ def print_test_banner(testname):
 class TestH8mail(unittest.TestCase):
     """Tests for `h8mail` package."""
 
+    def write_text_file(self, filename, content):
+        """Write content to a text file in temp_dir."""
+        path = os.path.join(self.temp_path, filename)
+        with open(path, "w", encoding="utf-8") as file_handle:
+            file_handle.write(content)
+        return path
+    
+    # Uncomment to test gzip writing functionality
+    # def write_gzip_file(self, filename, content):
+    #     """Write content to a gzip file in temp_dir."""
+    #     path = os.path.join(self.temp_path, filename)
+    #     with gzip.open(path, "wt", encoding="utf-8") as file_handle:
+    #         file_handle.write(content)
+    #     return path
+
     def setUp(self):
         """Generating local files with automatic cleanup (Python 3.10+)"""
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -54,21 +69,14 @@ class TestH8mail(unittest.TestCase):
         ddqsdqs
         """
 
-
-        self.filetargets = os.path.join(self.temp_path, "test-emails.txt")
-        self.filetxt = os.path.join(self.temp_path, "test-creds.txt")
+        self.filetargets = self.write_text_file("test-emails.txt", emails)
+        self.filetxt = self.write_text_file("test-creds.txt", creds)
+                
         self.filegz = os.path.join(self.temp_path, "test-creds.tar.gz")
-
-        print(f"Test files generated in : {self.temp_path}")
-
-        with open(self.filetargets, "w", encoding="utf-8") as f:
-            f.write(emails)
-
-        with open(self.filetxt, "w", encoding="utf-8") as f:
-            f.write(creds)
-
         with tarfile.open(self.filegz, "w:gz") as tar:
             tar.add(self.filetxt, arcname="test-creds.txt")
+            
+        print(f"Test files generated in : {self.temp_path}")
 
     def test_000_simple(self):
         """Simple test"""
