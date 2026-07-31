@@ -21,62 +21,55 @@ def print_test_banner(testname):
     print("\tTESTING: "+testname)
     print("========================")
     print("========================")
-
-
-def make_temp_directory():
-    emails = """
-    john.smith@gmail.com
-    john.smith@gmail.com
-    fijsdhkfnhqsdkf
-    fdqfqsdff
-    test@evilcorp.com
-    notfound@email.com
-    """
-    creds = """
-    john.smith@gmail.com:SecretPASS
-    bloblfd
-    fjsdkf,ds
-    test@evilcorp.com:An0therSECRETpassw0rd
-    ddqsdqs
-    """
-    temp_dir = tempfile.mkdtemp()
-    try:
-        fd_emails = open(os.path.join(temp_dir, "test-emails.txt"), "w")
-        fd_emails.writelines(emails)
-        fd_emails.close()
-        fd_creds = open(os.path.join(temp_dir, "test-creds.txt"), "w")
-        fd_creds.writelines(creds)
-        fd_creds.close()
-        tar = tarfile.open(os.path.join(temp_dir, "test-creds.tar.gz"), "w:gz")
-        tar.add(os.path.join(temp_dir, "test-creds.txt"))
-        tar.close()
-
-        return temp_dir
-    except Exception as e:
-        print(e)
-
+    
 
 class TestH8mail(unittest.TestCase):
     """Tests for `h8mail` package."""
 
     def setUp(self):
-        """Generating local files"""
-        self.temp_dir = make_temp_directory()
+        """Generating local files with automatic cleanup (Python 3.10+)"""
+        self.temp_dir = tempfile.TemporaryDirectory()
         print("Created Temp Dir: " + self.temp_dir)
         print(os.listdir(self.temp_dir))
 
         print("Registering dir + content for auto cleanup: " + self.temp_dir)
-        self.addCleanup(self.temp_directory.cleanup)
+        self.addCleanup(self.temp_dir.cleanup)
 
-    
-        self.filetargets = os.path.join(self.temp_dir, "test-emails.txt")
-        self.filetxt = os.path.join(self.temp_dir, "test-creds.txt")
-        self.filegz = os.path.join(self.temp_dir, "test-creds.tar.gz")
+        self.temp_path = self.temp_dir.name
+
+        # --- Dummy Data ---
+        emails = """
+        john.smith@gmail.com
+        john.smith@gmail.com
+        fijsdhkfnhqsdkf
+        fdqfqsdff
+        test@evilcorp.com
+        notfound@email.com
+        """
+
+        creds = """
+        john.smith@gmail.com:SecretPASS
+        bloblfd
+        fjsdkf,ds
+        test@evilcorp.com:An0therSECRETpassw0rd
+        ddqsdqs
+        """
+
+
+        self.filetargets = os.path.join(self.temp_path, "test-emails.txt")
+        self.filetxt = os.path.join(self.temp_path, "test-creds.txt")
+        self.filegz = os.path.join(self.temp_path, "test-creds.tar.gz")
+
         print("Test files generated in : " + self.temp_dir)
 
-        # a = open(self.filetxt, "r")
-        # print(a.readlines())
+        with open(self.filetargets, "w", encoding="utf-8") as f:
+            f.write(emails)
 
+        with open(self.filetxt, "w", encoding="utf-8") as f:
+            f.write(creds)
+
+        with tarfile.open(self.filegz, "w:gz") as tar:
+            tar.add(self.filetxt, arcname="test-creds.txt")
 
     def test_000_simple(self):
         """Simple test"""
