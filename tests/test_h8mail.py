@@ -6,7 +6,6 @@
 
 import unittest
 import tempfile
-import shutil
 import os
 import tarfile
 import gzip
@@ -76,7 +75,7 @@ class TestH8mail(unittest.TestCase):
     def tearDown(self):
         """Cleaning temp files"""
         print("Removing dir + content: " + self.temp_dir)
-        shutil.rmtree(self.temp_dir)
+        self.addCleanup(self.temp_directory.cleanup)
 
     def test_000_simple(self):
         """Simple test"""
