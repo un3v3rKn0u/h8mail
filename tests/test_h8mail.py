@@ -29,13 +29,12 @@ class TestH8mail(unittest.TestCase):
     def setUp(self):
         """Generating local files with automatic cleanup (Python 3.10+)"""
         self.temp_dir = tempfile.TemporaryDirectory()
-        print("Created Temp Dir: " + self.temp_dir)
-        print(os.listdir(self.temp_dir))
-
-        print("Registering dir + content for auto cleanup: " + self.temp_dir)
+        self.temp_path = self.temp_dir.name
+        print(f"Created Temp Dir: {self.temp_path}")
+        print(f"Registering dir + content for auto cleanup: {self.temp_path}")
+        
         self.addCleanup(self.temp_dir.cleanup)
 
-        self.temp_path = self.temp_dir.name
 
         # --- Dummy Data ---
         emails = """
