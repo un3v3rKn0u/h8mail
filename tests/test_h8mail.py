@@ -5,15 +5,11 @@
 
 
 import unittest
-import sys
-import time
 import tempfile
 import shutil
-import contextlib
 import os
 import tarfile
 import gzip
-import argparse
 from h8mail.utils import run
 from h8mail.utils import classes
 from h8mail.utils import helpers
