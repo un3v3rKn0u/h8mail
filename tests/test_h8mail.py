@@ -78,20 +78,13 @@ class TestH8mail(unittest.TestCase):
             
         print(f"Test files generated in : {self.temp_path}")
 
+
     @unittest.skipUnless(
         os.getenv("RUN_INTEGRATION_TEST") == "1",
         "Skipping integration test by default. Set RUN_INTEGRATION_TEST=1 to run."
     )
     def test_000_simple_integration_test(self):
         """Simple integration test"""
-        run.print_banner()
-        print_test_banner("VANILLA")
-
-        user_args = run.parse_args(["-t", "test@example.com"])
-        run.h8mail(user_args)
-
-    def test_000_simple(self):
-        """Simple test"""
         run.print_banner()
         print_test_banner("VANILLA")
 
@@ -116,7 +109,7 @@ class TestH8mail(unittest.TestCase):
         user_args_gz = run.parse_args(["-t", self.filetargets, "-gz", self.filegz, "-sk", "-sf"])
         run.h8mail(user_args_gz)
 
-    def test_003_url(self):
+    def test_005_url(self):
         run.print_banner()
         print_test_banner("URL-RAW")
         user_args_lb = run.parse_args(["-u", "https://raw.githubusercontent.com/khast3x/h8mail/master/tests/test_email.txt"])
