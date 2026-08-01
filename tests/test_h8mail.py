@@ -145,6 +145,14 @@ class TestH8mail(unittest.TestCase):
         self.assertIsNone(arguments.output_file)
         self.assertIsNone(arguments.output_json)
 
+    def test_004_parse_args_accepts_single_target(self) -> None:
+        """Verify CLI argument parser correctly assigns a single email target."""
+        arguments = run.parse_args(["-t", "john.smith@gmail.com"])
+
+        self.assertEqual(arguments.user_targets, ["john.smith@gmail.com"])
+        self.assertIsNone(arguments.local_breach_src)
+        self.assertIsNone(arguments.user_urls)
+
     def test_005_url(self):
         run.print_banner()
         print_test_banner("URL-RAW")
