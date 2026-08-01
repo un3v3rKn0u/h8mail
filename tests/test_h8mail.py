@@ -8,7 +8,7 @@ import unittest
 import tempfile
 import os
 import tarfile
-import gzip
+import gzip # Unused import, but may be used if write_gzip_file function is uncommented
 from h8mail.utils import run
 from h8mail.utils import classes
 from h8mail.utils import helpers
@@ -77,6 +77,18 @@ class TestH8mail(unittest.TestCase):
             tar.add(self.filetxt, arcname="test-creds.txt")
             
         print(f"Test files generated in : {self.temp_path}")
+
+    @unittest.skipUnless(
+        os.getenv("RUN_INTEGRATION_TEST") == "1",
+        "Skipping integration test by default. Set RUN_INTEGRATION_TEST=1 to run."
+    )
+    def test_000_simple_integration_test(self):
+        """Simple integration test"""
+        run.print_banner()
+        print_test_banner("VANILLA")
+
+        user_args = run.parse_args(["-t", "test@example.com"])
+        run.h8mail(user_args)
 
     def test_000_simple(self):
         """Simple test"""
