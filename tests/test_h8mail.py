@@ -54,7 +54,7 @@ class TestH8mail(unittest.TestCase):
         # --- Dummy Data ---
         emails = """
         john.smith@gmail.com
-        john.smith@gmail.com
+        test@example.com
         fijsdhkfnhqsdkf
         fdqfqsdff
         test@evilcorp.com
