@@ -135,6 +135,16 @@ class TestH8mail(unittest.TestCase):
         self.assertTrue(arguments.single_file)
         self.assertIsNone(arguments.user_urls)
 
+    def test_003_parse_args_uses_safe_expected_defaults(self):
+        """Verify CLI argument parser defaults to safe, expected values when given only a target."""
+        arguments = run.parse_args(["-t", "john.smith@gmail.com"])
+        self.assertFalse(arguments.skip_defaults)
+        self.assertFalse(arguments.single_file)
+        self.assertFalse(arguments.loose)
+        self.assertFalse(arguments.debug)
+        self.assertIsNone(arguments.output_file)
+        self.assertIsNone(arguments.output_json)
+
     def test_005_url(self):
         run.print_banner()
         print_test_banner("URL-RAW")
