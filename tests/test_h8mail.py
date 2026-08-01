@@ -5,15 +5,10 @@
 
 
 import unittest
-import sys
-import time
 import tempfile
-import shutil
-import contextlib
 import os
 import tarfile
-import gzip
-import argparse
+import gzip # Unused import, but may be used if write_gzip_file function is uncommented
 from h8mail.utils import run
 from h8mail.utils import classes
 from h8mail.utils import helpers
@@ -26,71 +21,77 @@ def print_test_banner(testname):
     print("\tTESTING: "+testname)
     print("========================")
     print("========================")
-
-
-def make_temp_directory():
-    emails = """
-    john.smith@gmail.com
-    john.smith@gmail.com
-    fijsdhkfnhqsdkf
-    fdqfqsdff
-    test@evilcorp.com
-    notfound@email.com
-    """
-    creds = """
-    john.smith@gmail.com:SecretPASS
-    bloblfd
-    fjsdkf,ds
-    test@evilcorp.com:An0therSECRETpassw0rd
-    ddqsdqs
-    """
-    temp_dir = tempfile.mkdtemp()
-    try:
-        fd_emails = open(os.path.join(temp_dir, "test-emails.txt"), "w")
-        fd_emails.writelines(emails)
-        fd_emails.close()
-        fd_creds = open(os.path.join(temp_dir, "test-creds.txt"), "w")
-        fd_creds.writelines(creds)
-        fd_creds.close()
-        tar = tarfile.open(os.path.join(temp_dir, "test-creds.tar.gz"), "w:gz")
-        tar.add(os.path.join(temp_dir, "test-creds.txt"))
-        tar.close()
-
-        return temp_dir
-    except Exception as e:
-        print(e)
-
+    
 
 class TestH8mail(unittest.TestCase):
     """Tests for `h8mail` package."""
 
+    def write_text_file(self, filename, content):
+        """Write content to a text file in temp_dir."""
+        path = os.path.join(self.temp_path, filename)
+        with open(path, "w", encoding="utf-8") as file_handle:
+            file_handle.write(content)
+        return path
+    
+    # Uncomment to test gzip writing functionality
+    # def write_gzip_file(self, filename, content):
+    #     """Write content to a gzip file in temp_dir."""
+    #     path = os.path.join(self.temp_path, filename)
+    #     with gzip.open(path, "wt", encoding="utf-8") as file_handle:
+    #         file_handle.write(content)
+    #     return path
+
     def setUp(self):
-        """Generating local files"""
-        self.temp_dir = make_temp_directory()
-        print("Created Temp Dir: " + self.temp_dir)
-        print(os.listdir(self.temp_dir))
-        self.filetargets = os.path.join(self.temp_dir, "test-emails.txt")
-        self.filetxt = os.path.join(self.temp_dir, "test-creds.txt")
-        self.filegz = os.path.join(self.temp_dir, "test-creds.tar.gz")
-        print("Test files generated in : " + self.temp_dir)
+        """Generating local files with automatic cleanup (Python 3.10+)"""
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.temp_path = self.temp_dir.name
+        print(f"Created Temp Dir: {self.temp_path}")
+        print(f"Registering dir + content for auto cleanup: {self.temp_path}")
+        
+        self.addCleanup(self.temp_dir.cleanup)
 
-        # a = open(self.filetxt, "r")
-        # print(a.readlines())
 
-    def tearDown(self):
-        """Cleaning temp files"""
-        print("Removing dir + content: " + self.temp_dir)
-        shutil.rmtree(self.temp_dir)
+        # --- Dummy Data ---
+        emails = """
+        john.smith@gmail.com
+        test@example.com
+        fijsdhkfnhqsdkf
+        fdqfqsdff
+        test@evilcorp.com
+        notfound@email.com
+        """
 
-    def test_000_simple(self):
-        """Simple test"""
+        creds = """
+        john.smith@gmail.com:SecretPASS
+        bloblfd
+        fjsdkf,ds
+        test@evilcorp.com:An0therSECRETpassw0rd
+        ddqsdqs
+        """
+
+        self.filetargets = self.write_text_file("test-emails.txt", emails)
+        self.filetxt = self.write_text_file("test-creds.txt", creds)
+                
+        self.filegz = os.path.join(self.temp_path, "test-creds.tar.gz")
+        with tarfile.open(self.filegz, "w:gz") as tar:
+            tar.add(self.filetxt, arcname="test-creds.txt")
+            
+        print(f"Test files generated in : {self.temp_path}")
+
+
+    @unittest.skipUnless(
+        os.getenv("RUN_INTEGRATION_TEST") == "1",
+        "Skipping integration test by default. Set RUN_INTEGRATION_TEST=1 to run."
+    )
+    def test_000_simple_integration_test(self):
+        """Simple integration test"""
         run.print_banner()
         print_test_banner("VANILLA")
 
         user_args = run.parse_args(["-t", "test@example.com"])
         run.h8mail(user_args)
 
-    def test_002_local_files_txt_gz(self):
+    def test_001_local_files_txt_gz(self):
         """Local file search Test"""
         run.print_banner()
         print_test_banner("TXT LOCAL")
@@ -108,7 +109,56 @@ class TestH8mail(unittest.TestCase):
         user_args_gz = run.parse_args(["-t", self.filetargets, "-gz", self.filegz, "-sk", "-sf"])
         run.h8mail(user_args_gz)
 
-    def test_003_url(self):
+    def test_002_parse_args_accepts_local_search_options(self) -> None:
+        """Verify CLI argument parser correctly assigns local search flags."""
+        arguments = run.parse_args(
+            [
+                "-t",
+                "john.smith@gmail.com",
+                "test@example.com",
+                "-lb",
+                "/tmp/synthetic-breach.txt",
+                "-sk",
+                "-sf",
+            ]
+        )
+
+        self.assertEqual(
+            arguments.user_targets,
+            ["john.smith@gmail.com", "test@example.com"],
+        )
+        self.assertEqual(
+            arguments.local_breach_src,
+            ["/tmp/synthetic-breach.txt"],
+        )
+        self.assertTrue(arguments.skip_defaults)
+        self.assertTrue(arguments.single_file)
+        self.assertIsNone(arguments.user_urls)
+
+    def test_003_parse_args_uses_safe_expected_defaults(self):
+        """Verify CLI argument parser defaults to safe, expected values when given only a target."""
+        arguments = run.parse_args(["-t", "john.smith@gmail.com"])
+        self.assertFalse(arguments.skip_defaults)
+        self.assertFalse(arguments.single_file)
+        self.assertFalse(arguments.loose)
+        self.assertFalse(arguments.debug)
+        self.assertIsNone(arguments.output_file)
+        self.assertIsNone(arguments.output_json)
+
+    def test_004_parse_args_accepts_single_target(self) -> None:
+        """Verify CLI argument parser correctly assigns a single email target."""
+        arguments = run.parse_args(["-t", "john.smith@gmail.com"])
+
+        self.assertEqual(arguments.user_targets, ["john.smith@gmail.com"])
+        self.assertIsNone(arguments.local_breach_src)
+        self.assertIsNone(arguments.user_urls)
+
+    @unittest.skipUnless(
+        os.getenv("RUN_INTEGRATION_TEST") == "1",
+        "Skipping integration test by default. Set RUN_INTEGRATION_TEST=1 to run.",
+    )
+    def test_005_url(self):
+        """Fetch targets from a live URL."""
         run.print_banner()
         print_test_banner("URL-RAW")
         user_args_lb = run.parse_args(["-u", "https://raw.githubusercontent.com/khast3x/h8mail/master/tests/test_email.txt"])
