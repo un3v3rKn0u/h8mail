@@ -91,7 +91,7 @@ class TestH8mail(unittest.TestCase):
         user_args = run.parse_args(["-t", "test@example.com"])
         run.h8mail(user_args)
 
-    def test_002_local_files_txt_gz(self):
+    def test_001_local_files_txt_gz(self):
         """Local file search Test"""
         run.print_banner()
         print_test_banner("TXT LOCAL")
@@ -108,6 +108,32 @@ class TestH8mail(unittest.TestCase):
         print_test_banner("GZ LOCAL-SINGLEFILE")
         user_args_gz = run.parse_args(["-t", self.filetargets, "-gz", self.filegz, "-sk", "-sf"])
         run.h8mail(user_args_gz)
+
+    def test_002_parse_args_accepts_local_search_options(self) -> None:
+        """Verify CLI argument parser correctly assigns local search flags."""
+        arguments = run.parse_args(
+            [
+                "-t",
+                "john.smith@gmail.com",
+                "test@example.com",
+                "-lb",
+                "/tmp/synthetic-breach.txt",
+                "-sk",
+                "-sf",
+            ]
+        )
+
+        self.assertEqual(
+            arguments.user_targets,
+            ["john.smith@gmail.com", "test@example.com"],
+        )
+        self.assertEqual(
+            arguments.local_breach_src,
+            ["/tmp/synthetic-breach.txt"],
+        )
+        self.assertTrue(arguments.skip_defaults)
+        self.assertTrue(arguments.single_file)
+        self.assertIsNone(arguments.user_urls)
 
     def test_005_url(self):
         run.print_banner()
