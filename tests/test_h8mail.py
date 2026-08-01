@@ -153,7 +153,12 @@ class TestH8mail(unittest.TestCase):
         self.assertIsNone(arguments.local_breach_src)
         self.assertIsNone(arguments.user_urls)
 
+    @unittest.skipUnless(
+        os.getenv("RUN_INTEGRATION_TEST") == "1",
+        "Skipping integration test by default. Set RUN_INTEGRATION_TEST=1 to run.",
+    )
     def test_005_url(self):
+        """Fetch targets from a live URL."""
         run.print_banner()
         print_test_banner("URL-RAW")
         user_args_lb = run.parse_args(["-u", "https://raw.githubusercontent.com/khast3x/h8mail/master/tests/test_email.txt"])
