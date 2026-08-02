@@ -7,8 +7,7 @@
 import unittest
 import tempfile
 import os
-import tarfile
-import gzip # Unused import, but may be used if write_gzip_file function is uncommented
+import gzip
 from h8mail.utils import run
 from h8mail.utils import classes
 from h8mail.utils import helpers
@@ -33,13 +32,12 @@ class TestH8mail(unittest.TestCase):
             file_handle.write(content)
         return path
     
-    # Uncomment to test gzip writing functionality
-    # def write_gzip_file(self, filename, content):
-    #     """Write content to a gzip file in temp_dir."""
-    #     path = os.path.join(self.temp_path, filename)
-    #     with gzip.open(path, "wt", encoding="utf-8") as file_handle:
-    #         file_handle.write(content)
-    #     return path
+    def write_gzip_file(self, filename, content):
+        """Write content to a gzip file in temp_dir."""
+        path = os.path.join(self.temp_path, filename)
+        with gzip.open(path, "wt", encoding="utf-8") as file_handle:
+            file_handle.write(content)
+        return path
 
     def setUp(self):
         """Generating local files with automatic cleanup (Python 3.10+)"""
@@ -72,9 +70,7 @@ class TestH8mail(unittest.TestCase):
         self.filetargets = self.write_text_file("test-emails.txt", emails)
         self.filetxt = self.write_text_file("test-creds.txt", creds)
                 
-        self.filegz = os.path.join(self.temp_path, "test-creds.tar.gz")
-        with tarfile.open(self.filegz, "w:gz") as tar:
-            tar.add(self.filetxt, arcname="test-creds.txt")
+        self.filegz = self.write_gzip_file("test-creds.txt.gz", creds)
             
         print(f"Test files generated in : {self.temp_path}")
 
@@ -91,25 +87,69 @@ class TestH8mail(unittest.TestCase):
         user_args = run.parse_args(["-t", "test@example.com"])
         run.h8mail(user_args)
 
-    def test_001_local_files_txt_gz(self):
-        """Local file search Test"""
-        run.print_banner()
-        print_test_banner("TXT LOCAL")
-        user_args_lb = run.parse_args(["-t", self.filetargets, "-lb", self.filetxt, "-sk"])
-        run.h8mail(user_args_lb)
-        print_test_banner("TXT LOCAL-SINGLFILE")
-        user_args_lb = run.parse_args(["-t", self.filetargets, "-lb", self.filetxt, "-sk", "-sf"])
-        run.h8mail(user_args_lb)
+    def test_001_cleartext_local_search_returns_exact_matches(self):
+        """Clear-text searches return structured matches without network access."""
+        results = localsearch.local_search_single(
+            [self.filetxt],
+            ["john.smith@gmail.com", "missing@example.com"],
+        )
 
-        run.print_banner()
-        print_test_banner("GZ LOCAL")
-        user_args_gz = run.parse_args(["-t", self.filetargets, "-gz", self.filegz, "-sk"])
-        run.h8mail(user_args_gz)
-        print_test_banner("GZ LOCAL-SINGLEFILE")
-        user_args_gz = run.parse_args(["-t", self.filetargets, "-gz", self.filegz, "-sk", "-sf"])
-        run.h8mail(user_args_gz)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].target, "john.smith@gmail.com")
+        self.assertEqual(results[0].filepath, self.filetxt)
+        self.assertEqual(results[0].line, 1)
+        self.assertEqual(
+            results[0].content.strip(),
+            "john.smith@gmail.com:SecretPASS",
+        )
 
-    def test_002_parse_args_accepts_local_search_options(self) -> None:
+    def test_002_gzip_local_search_returns_exact_matches(self):
+        """Gzip searches return structured matches without network access."""
+        results = localgzipsearch.local_search_single_gzip(
+            [self.filegz],
+            ["test@evilcorp.com", "missing@example.com"],
+        )
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].target, "test@evilcorp.com")
+        self.assertEqual(results[0].filepath, self.filegz)
+        self.assertEqual(results[0].line, 4)
+        self.assertEqual(
+            results[0].content.strip(),
+            "test@evilcorp.com:An0therSECRETpassw0rd",
+        )
+
+    def test_003_local_results_are_added_to_matching_targets_only(self):
+        """Local results preserve their source and update only matching targets."""
+        matched = classes.target("john.smith@gmail.com")
+        unmatched = classes.target("missing@example.com")
+        local_result = classes.local_breach_target(
+            "john.smith@gmail.com",
+            self.filetxt,
+            1,
+            "john.smith@gmail.com:SecretPASS\n",
+        )
+        user_args = run.parse_args(["-t", "john.smith@gmail.com", "-sk"])
+
+        results = localsearch.local_to_targets(
+            [matched, unmatched],
+            [local_result],
+            user_args,
+        )
+
+        self.assertIs(results[0], matched)
+        self.assertEqual(matched.pwned, 1)
+        self.assertEqual(unmatched.pwned, 0)
+        self.assertEqual(
+            matched.data[-1],
+            (
+                "LOCALSEARCH",
+                "[test-creds.txt] Line 1: john.smith@gmail.com:SecretPASS",
+                "john.smith@gmail.com:SecretPASS",
+            ),
+        )
+
+    def test_004_parse_args_accepts_local_search_options(self) -> None:
         """Verify CLI argument parser correctly assigns local search flags."""
         arguments = run.parse_args(
             [
@@ -135,7 +175,7 @@ class TestH8mail(unittest.TestCase):
         self.assertTrue(arguments.single_file)
         self.assertIsNone(arguments.user_urls)
 
-    def test_003_parse_args_uses_safe_expected_defaults(self):
+    def test_005_parse_args_uses_safe_expected_defaults(self):
         """Verify CLI argument parser defaults to safe, expected values when given only a target."""
         arguments = run.parse_args(["-t", "john.smith@gmail.com"])
         self.assertFalse(arguments.skip_defaults)
@@ -145,7 +185,7 @@ class TestH8mail(unittest.TestCase):
         self.assertIsNone(arguments.output_file)
         self.assertIsNone(arguments.output_json)
 
-    def test_004_parse_args_accepts_single_target(self) -> None:
+    def test_006_parse_args_accepts_single_target(self) -> None:
         """Verify CLI argument parser correctly assigns a single email target."""
         arguments = run.parse_args(["-t", "john.smith@gmail.com"])
 
@@ -157,7 +197,7 @@ class TestH8mail(unittest.TestCase):
         os.getenv("RUN_INTEGRATION_TEST") == "1",
         "Skipping integration test by default. Set RUN_INTEGRATION_TEST=1 to run.",
     )
-    def test_005_url(self):
+    def test_007_url(self):
         """Fetch targets from a live URL."""
         run.print_banner()
         print_test_banner("URL-RAW")
