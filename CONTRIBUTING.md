@@ -22,6 +22,10 @@
 
 * Make sure your code passes the included tests. Run the offline test suite with `python3 -m unittest` in h8mail's top-level directory. To include the opt-in live integration tests, use `RUN_INTEGRATION_TEST=1 python3 -m unittest tests.test_h8mail`.
 
+* Pull requests targeting `master` and pushes to `master` run the offline test suite automatically across the Python versions in the GitHub Actions test matrix.
+
+* Live integration tests run separately on a weekly schedule and can also be started manually from the GitHub Actions interface.
+
 * Code should be formatted using [Python Black](https://github.com/psf/black). Most IDE's can run `black` directly. You can also launch it [from CLI](https://github.com/psf/black#installation-and-usage)
 
 ----
