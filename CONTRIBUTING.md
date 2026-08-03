@@ -12,6 +12,10 @@
 
 * h8mail should only depend on the `requests` package
 
+* Python 3.10 is the minimum supported version. User-visible CLI or output
+  changes must update the [supported contract](docs/supported-contract.md) and
+  its characterization tests.
+
 * If adding a new feature or refactoring, consider opening an issue or sending me an email beforehand to ensure things go smoothly
 
 * Comment your functions as docstrings

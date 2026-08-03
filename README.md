@@ -56,6 +56,9 @@
 
 ### :package: `pip3 install h8mail`
 
+h8mail supports Python 3.10 and newer. The stable runtime, CLI, CSV, and JSON
+behavior is defined in the [supported contract](docs/supported-contract.md).
+
 -----
 
 

@@ -8,11 +8,18 @@ import unittest
 import tempfile
 import os
 import gzip
+import contextlib
+import io
+from pathlib import Path
 from h8mail.utils import run
 from h8mail.utils import classes
 from h8mail.utils import helpers
 from h8mail.utils import localsearch
 from h8mail.utils import localgzipsearch
+from h8mail.utils import print_json
+
+
+FIXTURES = Path(__file__).parent / "fixtures"
 
 def print_test_banner(testname):
     print("========================")
@@ -207,3 +214,96 @@ class TestH8mail(unittest.TestCase):
         print_test_banner("URL-MESSY")
         user_args_lb = run.parse_args(["-u", "https://raw.githubusercontent.com/khast3x/h8mail/master/tests/test_email.txt"])
         run.h8mail(user_args_lb)
+
+    def test_008_help_is_successful_and_documents_supported_inputs(self):
+        """The public parser exposes the supported input and output options."""
+        output = io.StringIO()
+
+        with contextlib.redirect_stdout(output):
+            with self.assertRaises(SystemExit) as raised:
+                run.parse_args(["--help"])
+
+        self.assertEqual(raised.exception.code, 0)
+        help_text = output.getvalue()
+        for option in (
+            "--targets",
+            "--url",
+            "--skip-defaults",
+            "--local-breach",
+            "--gzip",
+            "--output",
+            "--json",
+        ):
+            self.assertIn(option, help_text)
+
+    def test_009_unknown_cli_option_exits_with_usage_error(self):
+        """Unknown CLI options retain argparse's status-2 error contract."""
+        with contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit) as raised:
+                run.parse_args(["--not-a-real-option"])
+
+        self.assertEqual(raised.exception.code, 2)
+
+    def representative_targets(self):
+        """Build deterministic target data shared by output characterizations."""
+        first = classes.target("john.smith@gmail.com")
+        first.pwned = 1
+        first.data.extend(
+            [
+                ("SOURCE", "test-creds.txt"),
+                ("PASS", "SecretPASS"),
+            ]
+        )
+        second = classes.target("test@evilcorp.com")
+        second.pwned = 1
+        second.data.extend(
+            [
+                ("SOURCE", "test-creds.txt"),
+                ("PASS", "An0therSECRETpassw0rd"),
+            ]
+        )
+        return [first, second]
+
+    def test_010_csv_output_matches_characterization_fixture(self):
+        """Representative CSV output remains byte-for-byte compatible."""
+        destination = Path(self.temp_path) / "results.csv"
+
+        helpers.save_results_csv(destination, self.representative_targets())
+        fixture_rows = (
+            FIXTURES / "representative-results.csv"
+        ).read_text(encoding="utf-8").splitlines()
+        expected = ("\r\n".join(fixture_rows) + "\r\n").encode("utf-8")
+
+        self.assertEqual(destination.read_bytes(), expected)
+
+    def test_011_json_output_matches_characterization_fixture(self):
+        """Representative JSON output remains byte-for-byte compatible."""
+        destination = Path(self.temp_path) / "results.json"
+
+        print_json.save_results_json(destination, self.representative_targets())
+        expected = (
+            (FIXTURES / "representative-results.json")
+            .read_text(encoding="utf-8")
+            .rstrip("\n")
+            .encode("utf-8")
+        )
+
+        self.assertEqual(destination.read_bytes(), expected)
+
+    def test_012_search_rejects_missing_input_mode(self):
+        """A search without targets or URLs exits with status 1."""
+        with self.assertRaises(SystemExit) as raised:
+            run.h8mail(run.parse_args([]))
+
+        self.assertEqual(raised.exception.code, 1)
+
+    def test_013_search_rejects_conflicting_input_modes(self):
+        """Targets and URLs are mutually exclusive search inputs."""
+        arguments = run.parse_args(
+            ["-t", "alice@example.com", "-u", "https://example.com"]
+        )
+
+        with self.assertRaises(SystemExit) as raised:
+            run.h8mail(arguments)
+
+        self.assertEqual(raised.exception.code, 1)
